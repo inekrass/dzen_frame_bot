@@ -26,13 +26,13 @@ def repeat_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="Обработать ещё одну фотографию",
+                    text="Сделать еще фото",
                     callback_data=UPLOAD_PHOTO_CALLBACK,
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="Снова использовать фото профиля",
+                    text="Использовать фото профиля",
                     callback_data=PROFILE_PHOTO_CALLBACK,
                 )
             ],

@@ -237,6 +237,7 @@ async def _process_downloadable(
         await message.answer_photo(
             BufferedInputFile(result.jpeg, filename="dzen-ludi-slova.jpg"),
             caption=result_caption,
+            parse_mode=ParseMode.HTML,
         )
         await message.answer_document(
             BufferedInputFile(result.png, filename="dzen-ludi-slova.png"),

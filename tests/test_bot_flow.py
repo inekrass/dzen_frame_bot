@@ -64,13 +64,16 @@ def test_welcome_contains_branded_custom_emoji_ids() -> None:
 
 
 def test_repeat_keyboard_keeps_both_photo_sources() -> None:
-    callbacks = {
-        button.callback_data
+    buttons = {
+        button.callback_data: button.text
         for row in repeat_keyboard().inline_keyboard
         for button in row
     }
 
-    assert callbacks == {UPLOAD_PHOTO_CALLBACK, PROFILE_PHOTO_CALLBACK}
+    assert buttons == {
+        UPLOAD_PHOTO_CALLBACK: "Сделать еще фото",
+        PROFILE_PHOTO_CALLBACK: "Использовать фото профиля",
+    }
 
 
 def test_select_profile_photo_returns_largest_size() -> None:
