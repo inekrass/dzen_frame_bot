@@ -1,3 +1,33 @@
 # Local project documentation
 CONTRIBUTING.md
 docs/ROADMAP.md
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.python-version.local
+.venv/
+build/
+dist/
+
+# Test and tool caches
+.coverage
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+
+# Local application data
+data/
+*.db
+*.sqlite3
+
+# macOS and editors
+.DS_Store
+.idea/
+.vscode/
