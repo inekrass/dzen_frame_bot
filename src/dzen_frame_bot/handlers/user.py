@@ -6,6 +6,7 @@ import logging
 from io import BytesIO
 
 from aiogram import Bot, F, Router
+from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram.types import (
     BufferedInputFile,
@@ -53,7 +54,11 @@ SUPPORTED_DOCUMENT_MIME_TYPES = frozenset(
 async def handle_start(message: Message, stats_service: StatsService) -> None:
     """Explain the bot and present the two supported photo sources."""
     await stats_service.record(StatsEvent.START)
-    await message.answer(WELCOME_TEXT, reply_markup=main_keyboard())
+    await message.answer(
+        WELCOME_TEXT,
+        parse_mode=ParseMode.HTML,
+        reply_markup=main_keyboard(),
+    )
 
 
 @router.callback_query(F.data == UPLOAD_PHOTO_CALLBACK)

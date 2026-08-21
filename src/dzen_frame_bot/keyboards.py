@@ -7,15 +7,9 @@ PROFILE_PHOTO_CALLBACK = "photo:profile"
 
 
 def main_keyboard() -> InlineKeyboardMarkup:
-    """Offer uploaded-photo and Telegram-profile sources."""
+    """Offer the Telegram profile photo shortcut after onboarding."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="Загрузить фотографию",
-                    callback_data=UPLOAD_PHOTO_CALLBACK,
-                )
-            ],
             [
                 InlineKeyboardButton(
                     text="Использовать фото профиля",

@@ -34,14 +34,14 @@ class RecordingImageProcessor:
         )
 
 
-def test_main_keyboard_offers_both_photo_sources() -> None:
+def test_main_keyboard_offers_only_profile_photo_shortcut() -> None:
     callbacks = {
         button.callback_data
         for row in main_keyboard().inline_keyboard
         for button in row
     }
 
-    assert callbacks == {UPLOAD_PHOTO_CALLBACK, PROFILE_PHOTO_CALLBACK}
+    assert callbacks == {PROFILE_PHOTO_CALLBACK}
 
 
 def test_start_handler_sends_welcome_and_keyboard() -> None:
@@ -54,7 +54,13 @@ def test_start_handler_sends_welcome_and_keyboard() -> None:
     message.answer.assert_awaited_once()
     args, kwargs = message.answer.await_args
     assert args == (WELCOME_TEXT,)
+    assert kwargs["parse_mode"] == "HTML"
     assert kwargs["reply_markup"] == main_keyboard()
+
+
+def test_welcome_contains_branded_custom_emoji_ids() -> None:
+    assert 'emoji-id="5469683509071205995"' in WELCOME_TEXT
+    assert 'emoji-id="5474654521399465276"' in WELCOME_TEXT
 
 
 def test_repeat_keyboard_keeps_both_photo_sources() -> None:
