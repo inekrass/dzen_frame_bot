@@ -15,6 +15,7 @@ from dzen_frame_bot.keyboards import (
 )
 from dzen_frame_bot.services.guards import AlbumGuard, UserRequestGuard
 from dzen_frame_bot.services.photo_processing import PhotoProcessingService
+from dzen_frame_bot.stats import StatsEvent
 from dzen_frame_bot.texts import WELCOME_TEXT
 
 
@@ -45,9 +46,11 @@ def test_main_keyboard_offers_both_photo_sources() -> None:
 
 def test_start_handler_sends_welcome_and_keyboard() -> None:
     message = AsyncMock()
+    stats_service = AsyncMock()
 
-    asyncio.run(handle_start(message))
+    asyncio.run(handle_start(message, stats_service))
 
+    stats_service.record.assert_awaited_once_with(StatsEvent.START)
     message.answer.assert_awaited_once()
     args, kwargs = message.answer.await_args
     assert args == (WELCOME_TEXT,)

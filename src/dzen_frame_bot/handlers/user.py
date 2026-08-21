@@ -25,6 +25,7 @@ from dzen_frame_bot.keyboards import (
 )
 from dzen_frame_bot.services.guards import AlbumGuard, UserRequestGuard
 from dzen_frame_bot.services.photo_processing import PhotoProcessingService
+from dzen_frame_bot.stats import StatsEvent, StatsService
 from dzen_frame_bot.texts import (
     ALBUM_REJECTED_TEXT,
     BUSY_TEXT,
@@ -49,8 +50,9 @@ SUPPORTED_DOCUMENT_MIME_TYPES = frozenset(
 
 
 @router.message(CommandStart())
-async def handle_start(message: Message) -> None:
+async def handle_start(message: Message, stats_service: StatsService) -> None:
     """Explain the bot and present the two supported photo sources."""
+    await stats_service.record(StatsEvent.START)
     await message.answer(WELCOME_TEXT, reply_markup=main_keyboard())
 
 
@@ -68,11 +70,13 @@ async def handle_profile_choice(
     bot: Bot,
     photo_service: PhotoProcessingService,
     user_guard: UserRequestGuard,
+    stats_service: StatsService,
 ) -> None:
     """Download and process the latest available Telegram profile photo."""
     await callback.answer()
     if not isinstance(callback.message, Message):
         return
+    await stats_service.record(StatsEvent.PROFILE_REQUEST)
 
     try:
         profile_photos = await bot.get_user_profile_photos(
@@ -82,6 +86,7 @@ async def handle_profile_choice(
         )
     except Exception:
         logger.exception("Profile photo request failed")
+        await stats_service.record(StatsEvent.ERROR)
         await callback.message.answer(
             GENERIC_ERROR_TEXT,
             reply_markup=main_keyboard(),
@@ -103,6 +108,7 @@ async def handle_profile_choice(
         user_id=callback.from_user.id,
         photo_service=photo_service,
         user_guard=user_guard,
+        stats_service=stats_service,
     )
 
 
@@ -113,6 +119,7 @@ async def handle_uploaded_photo(
     photo_service: PhotoProcessingService,
     album_guard: AlbumGuard,
     user_guard: UserRequestGuard,
+    stats_service: StatsService,
 ) -> None:
     """Process the largest Telegram representation of one uploaded photo."""
     if await _reject_album(message, album_guard):
@@ -122,6 +129,7 @@ async def handle_uploaded_photo(
         return
 
     photo = message.photo[-1]
+    await stats_service.record(StatsEvent.UPLOAD_REQUEST)
     await _process_downloadable(
         message=message,
         bot=bot,
@@ -130,6 +138,7 @@ async def handle_uploaded_photo(
         user_id=message.from_user.id,
         photo_service=photo_service,
         user_guard=user_guard,
+        stats_service=stats_service,
     )
 
 
@@ -140,6 +149,7 @@ async def handle_uploaded_document(
     photo_service: PhotoProcessingService,
     album_guard: AlbumGuard,
     user_guard: UserRequestGuard,
+    stats_service: StatsService,
 ) -> None:
     """Accept a supported image sent as an uncompressed Telegram document."""
     if await _reject_album(message, album_guard):
@@ -153,6 +163,7 @@ async def handle_uploaded_document(
         await message.answer(INVALID_IMAGE_TEXT)
         return
 
+    await stats_service.record(StatsEvent.UPLOAD_REQUEST)
     await _process_downloadable(
         message=message,
         bot=bot,
@@ -161,6 +172,7 @@ async def handle_uploaded_document(
         user_id=message.from_user.id,
         photo_service=photo_service,
         user_guard=user_guard,
+        stats_service=stats_service,
     )
 
 
@@ -197,8 +209,10 @@ async def _process_downloadable(
     user_id: int,
     photo_service: PhotoProcessingService,
     user_guard: UserRequestGuard,
+    stats_service: StatsService,
 ) -> None:
     if file_size is not None and file_size > photo_service.max_input_bytes:
+        await stats_service.record(StatsEvent.ERROR)
         await message.answer(TOO_LARGE_TEXT)
         return
     if not await user_guard.try_acquire(user_id):
@@ -224,12 +238,18 @@ async def _process_downloadable(
             caption=RESULT_DOCUMENT_TEXT,
             reply_markup=repeat_keyboard(),
         )
+        await stats_service.record(StatsEvent.PROCESSED)
+        if not result.used_face_crop:
+            await stats_service.record(StatsEvent.CENTERED)
     except ImageTooLargeError:
+        await stats_service.record(StatsEvent.ERROR)
         await message.answer(TOO_LARGE_TEXT)
     except InvalidImageError:
+        await stats_service.record(StatsEvent.ERROR)
         await message.answer(INVALID_IMAGE_TEXT)
     except Exception:
         logger.exception("Photo processing failed")
+        await stats_service.record(StatsEvent.ERROR)
         await message.answer(GENERIC_ERROR_TEXT, reply_markup=main_keyboard())
     finally:
         await user_guard.release(user_id)
