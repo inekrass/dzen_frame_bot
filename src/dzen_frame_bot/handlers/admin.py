@@ -5,11 +5,16 @@ from __future__ import annotations
 import logging
 
 from aiogram import Router
+from aiogram.enums import MessageEntityType
 from aiogram.filters import Command
 from aiogram.types import Message
 
 from dzen_frame_bot.stats import StatsCounters, StatsService, StatsSnapshot
-from dzen_frame_bot.texts import ACCESS_DENIED_TEXT, STATS_ERROR_TEXT
+from dzen_frame_bot.texts import (
+    ACCESS_DENIED_TEXT,
+    CUSTOM_EMOJI_NOT_FOUND_TEXT,
+    STATS_ERROR_TEXT,
+)
 
 logger = logging.getLogger(__name__)
 router = Router(name="admin")
@@ -21,6 +26,39 @@ async def handle_my_id(message: Message) -> None:
     if message.from_user is None:
         return
     await message.answer(f"Ваш Telegram ID: {message.from_user.id}")
+
+
+@router.message(Command("emojiid"))
+async def handle_emoji_ids(
+    message: Message,
+    admin_ids: frozenset[int],
+) -> None:
+    """Return custom emoji identifiers to a configured administrator."""
+    if message.from_user is None or message.from_user.id not in admin_ids:
+        await message.answer(ACCESS_DENIED_TEXT)
+        return
+
+    source_message = message.reply_to_message or message
+    emoji_ids = extract_custom_emoji_ids(source_message)
+    if not emoji_ids:
+        await message.answer(CUSTOM_EMOJI_NOT_FOUND_TEXT)
+        return
+
+    lines = ["ID кастомных эмодзи:"]
+    lines.extend(f"{index}. {emoji_id}" for index, emoji_id in enumerate(emoji_ids, 1))
+    await message.answer("\n".join(lines))
+
+
+def extract_custom_emoji_ids(message: Message) -> tuple[str, ...]:
+    """Extract unique custom emoji identifiers while preserving their order."""
+    entities = (*(message.entities or ()), *(message.caption_entities or ()))
+    emoji_ids = (
+        entity.custom_emoji_id
+        for entity in entities
+        if entity.type == MessageEntityType.CUSTOM_EMOJI
+        and entity.custom_emoji_id is not None
+    )
+    return tuple(dict.fromkeys(emoji_ids))
 
 
 @router.message(Command("stats"))

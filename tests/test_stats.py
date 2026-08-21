@@ -6,14 +6,20 @@ from datetime import date
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from dzen_frame_bot.handlers.admin import format_stats, handle_my_id, handle_stats
+from dzen_frame_bot.handlers.admin import (
+    extract_custom_emoji_ids,
+    format_stats,
+    handle_emoji_ids,
+    handle_my_id,
+    handle_stats,
+)
 from dzen_frame_bot.stats import (
     StatsCounters,
     StatsEvent,
     StatsRepository,
     StatsSnapshot,
 )
-from dzen_frame_bot.texts import ACCESS_DENIED_TEXT
+from dzen_frame_bot.texts import ACCESS_DENIED_TEXT, CUSTOM_EMOJI_NOT_FOUND_TEXT
 
 
 def test_repository_aggregates_daily_and_total_counters(tmp_path) -> None:
@@ -99,3 +105,54 @@ def test_myid_returns_id_without_storage() -> None:
     asyncio.run(handle_my_id(message))
 
     message.answer.assert_awaited_once_with("Ваш Telegram ID: 123456")
+
+
+def test_unauthorized_user_cannot_read_custom_emoji_ids() -> None:
+    message = AsyncMock()
+    message.from_user = SimpleNamespace(id=10)
+
+    asyncio.run(handle_emoji_ids(message, frozenset({20})))
+
+    message.answer.assert_awaited_once_with(ACCESS_DENIED_TEXT)
+
+
+def test_authorized_user_receives_unique_custom_emoji_ids() -> None:
+    message = AsyncMock()
+    message.from_user = SimpleNamespace(id=10)
+    message.reply_to_message = None
+    message.entities = [
+        SimpleNamespace(type="bot_command", custom_emoji_id=None),
+        SimpleNamespace(type="custom_emoji", custom_emoji_id="111"),
+        SimpleNamespace(type="custom_emoji", custom_emoji_id="111"),
+        SimpleNamespace(type="custom_emoji", custom_emoji_id="222"),
+    ]
+    message.caption_entities = None
+
+    asyncio.run(handle_emoji_ids(message, frozenset({10})))
+
+    message.answer.assert_awaited_once_with(
+        "ID кастомных эмодзи:\n1. 111\n2. 222"
+    )
+
+
+def test_custom_emoji_ids_can_be_read_from_replied_caption() -> None:
+    replied_message = SimpleNamespace(
+        entities=None,
+        caption_entities=[
+            SimpleNamespace(type="custom_emoji", custom_emoji_id="333")
+        ],
+    )
+
+    assert extract_custom_emoji_ids(replied_message) == ("333",)
+
+
+def test_authorized_user_gets_instructions_without_custom_emoji() -> None:
+    message = AsyncMock()
+    message.from_user = SimpleNamespace(id=10)
+    message.reply_to_message = None
+    message.entities = []
+    message.caption_entities = None
+
+    asyncio.run(handle_emoji_ids(message, frozenset({10})))
+
+    message.answer.assert_awaited_once_with(CUSTOM_EMOJI_NOT_FOUND_TEXT)
