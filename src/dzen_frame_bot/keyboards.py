@@ -1,0 +1,46 @@
+"""Inline keyboards used by the user photo flow."""
+
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+UPLOAD_PHOTO_CALLBACK = "photo:upload"
+PROFILE_PHOTO_CALLBACK = "photo:profile"
+
+
+def main_keyboard() -> InlineKeyboardMarkup:
+    """Offer uploaded-photo and Telegram-profile sources."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Загрузить фотографию",
+                    callback_data=UPLOAD_PHOTO_CALLBACK,
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Использовать фото профиля",
+                    callback_data=PROFILE_PHOTO_CALLBACK,
+                )
+            ],
+        ]
+    )
+
+
+def repeat_keyboard() -> InlineKeyboardMarkup:
+    """Offer the same source choices after a successful result."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Обработать ещё одну фотографию",
+                    callback_data=UPLOAD_PHOTO_CALLBACK,
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Снова использовать фото профиля",
+                    callback_data=PROFILE_PHOTO_CALLBACK,
+                )
+            ],
+        ]
+    )

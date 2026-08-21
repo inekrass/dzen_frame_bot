@@ -162,6 +162,11 @@ class ImageProcessor:
         self._max_input_pixels = max_input_pixels
         self._frame = self._load_frame(frame_path)
 
+    @property
+    def max_input_bytes(self) -> int:
+        """Maximum encoded input size accepted by this processor."""
+        return self._max_input_bytes
+
     def process(self, image_bytes: bytes) -> ProcessedImage:
         """Decode, orient, crop, frame and encode one image entirely in memory."""
         image = self._decode_image(image_bytes)
