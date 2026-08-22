@@ -1,11 +1,17 @@
 """Tests for Telegram flow helpers and short-lived guards."""
 
 import asyncio
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 from aiogram.types import PhotoSize
 
-from dzen_frame_bot.handlers.user import handle_start, select_profile_photo
+from dzen_frame_bot.handlers.user import (
+    PHOTO_REACTION_EMOJI,
+    _react_to_uploaded_photo,
+    handle_start,
+    select_profile_photo,
+)
 from dzen_frame_bot.image_processing import ProcessedImage
 from dzen_frame_bot.keyboards import (
     PROFILE_PHOTO_CALLBACK,
@@ -61,6 +67,20 @@ def test_start_handler_sends_welcome_and_keyboard() -> None:
 def test_welcome_contains_branded_custom_emoji_ids() -> None:
     assert 'emoji-id="5469683509071205995"' in WELCOME_TEXT
     assert 'emoji-id="5474654521399465276"' in WELCOME_TEXT
+
+
+def test_directly_uploaded_photo_gets_heart_on_fire_reaction() -> None:
+    message = SimpleNamespace(chat=SimpleNamespace(id=10), message_id=20)
+    bot = AsyncMock()
+
+    asyncio.run(_react_to_uploaded_photo(message, bot))
+
+    bot.set_message_reaction.assert_awaited_once()
+    kwargs = bot.set_message_reaction.await_args.kwargs
+    assert kwargs["chat_id"] == 10
+    assert kwargs["message_id"] == 20
+    assert len(kwargs["reaction"]) == 1
+    assert kwargs["reaction"][0].emoji == PHOTO_REACTION_EMOJI
 
 
 def test_repeat_keyboard_keeps_both_photo_sources() -> None:

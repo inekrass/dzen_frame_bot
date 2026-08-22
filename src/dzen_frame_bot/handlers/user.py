@@ -7,6 +7,7 @@ from io import BytesIO
 
 from aiogram import Bot, F, Router
 from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import CommandStart
 from aiogram.types import (
     BufferedInputFile,
@@ -14,6 +15,7 @@ from aiogram.types import (
     Document,
     Message,
     PhotoSize,
+    ReactionTypeEmoji,
 )
 from aiogram.utils.chat_action import ChatActionSender
 
@@ -48,6 +50,7 @@ router = Router(name="user")
 SUPPORTED_DOCUMENT_MIME_TYPES = frozenset(
     {"image/jpeg", "image/png", "image/webp"}
 )
+PHOTO_REACTION_EMOJI = "❤‍🔥"
 
 
 @router.message(CommandStart())
@@ -134,6 +137,7 @@ async def handle_uploaded_photo(
         return
 
     photo = message.photo[-1]
+    await _react_to_uploaded_photo(message, bot)
     await stats_service.record(StatsEvent.UPLOAD_REQUEST)
     await _process_downloadable(
         message=message,
@@ -145,6 +149,18 @@ async def handle_uploaded_photo(
         user_guard=user_guard,
         stats_service=stats_service,
     )
+
+
+async def _react_to_uploaded_photo(message: Message, bot: Bot) -> None:
+    """React to a directly uploaded photo without interrupting its processing."""
+    try:
+        await bot.set_message_reaction(
+            chat_id=message.chat.id,
+            message_id=message.message_id,
+            reaction=[ReactionTypeEmoji(emoji=PHOTO_REACTION_EMOJI)],
+        )
+    except TelegramAPIError:
+        logger.warning("Could not react to uploaded photo", exc_info=True)
 
 
 @router.message(F.document)
