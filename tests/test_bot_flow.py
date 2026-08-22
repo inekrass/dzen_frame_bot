@@ -16,13 +16,24 @@ from dzen_frame_bot.image_processing import ProcessedImage
 from dzen_frame_bot.keyboards import (
     PROFILE_PHOTO_CALLBACK,
     UPLOAD_PHOTO_CALLBACK,
+    alternative_photo_keyboard,
     main_keyboard,
+    photo_source_keyboard,
     repeat_keyboard,
+    upload_photo_keyboard,
 )
 from dzen_frame_bot.services.guards import AlbumGuard, UserRequestGuard
 from dzen_frame_bot.services.photo_processing import PhotoProcessingService
 from dzen_frame_bot.stats import StatsEvent
-from dzen_frame_bot.texts import WELCOME_TEXT
+from dzen_frame_bot.texts import (
+    BUSY_TEXT,
+    GENERIC_ERROR_TEXT,
+    INVALID_IMAGE_TEXT,
+    NO_PROFILE_PHOTO_TEXT,
+    RESULT_DOCUMENT_TEXT,
+    TOO_LARGE_TEXT,
+    WELCOME_TEXT,
+)
 
 
 class RecordingImageProcessor:
@@ -94,6 +105,45 @@ def test_repeat_keyboard_keeps_both_photo_sources() -> None:
         UPLOAD_PHOTO_CALLBACK: "Сделать еще фото",
         PROFILE_PHOTO_CALLBACK: "Использовать фото профиля",
     }
+
+
+def test_error_keyboards_offer_requested_photo_sources() -> None:
+    source_buttons = {
+        button.callback_data: button.text
+        for row in photo_source_keyboard().inline_keyboard
+        for button in row
+    }
+    alternative_buttons = {
+        button.callback_data: button.text
+        for row in alternative_photo_keyboard().inline_keyboard
+        for button in row
+    }
+    upload_buttons = {
+        button.callback_data: button.text
+        for row in upload_photo_keyboard().inline_keyboard
+        for button in row
+    }
+
+    assert source_buttons == {
+        UPLOAD_PHOTO_CALLBACK: "Загрузить фото",
+        PROFILE_PHOTO_CALLBACK: "Использовать фото профиля",
+    }
+    assert alternative_buttons == {
+        UPLOAD_PHOTO_CALLBACK: "Выбрать другое фото",
+        PROFILE_PHOTO_CALLBACK: "Использовать фото профиля",
+    }
+    assert upload_buttons == {UPLOAD_PHOTO_CALLBACK: "Загрузить фото"}
+
+
+def test_error_and_document_texts_contain_custom_emoji_ids() -> None:
+    down_emoji_id = 'emoji-id="5474654521399465276"'
+
+    assert down_emoji_id in NO_PROFILE_PHOTO_TEXT
+    assert down_emoji_id in TOO_LARGE_TEXT
+    assert down_emoji_id in INVALID_IMAGE_TEXT
+    assert 'emoji-id="5472111647357162128"' in BUSY_TEXT
+    assert 'emoji-id="5474615892463606245"' in GENERIC_ERROR_TEXT
+    assert 'emoji-id="5258301191745459772"' in RESULT_DOCUMENT_TEXT
 
 
 def test_select_profile_photo_returns_largest_size() -> None:

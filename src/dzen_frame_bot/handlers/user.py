@@ -23,8 +23,11 @@ from dzen_frame_bot.image_processing import ImageTooLargeError, InvalidImageErro
 from dzen_frame_bot.keyboards import (
     PROFILE_PHOTO_CALLBACK,
     UPLOAD_PHOTO_CALLBACK,
+    alternative_photo_keyboard,
     main_keyboard,
+    photo_source_keyboard,
     repeat_keyboard,
+    upload_photo_keyboard,
 )
 from dzen_frame_bot.services.guards import AlbumGuard, UserRequestGuard
 from dzen_frame_bot.services.photo_processing import PhotoProcessingService
@@ -97,14 +100,15 @@ async def handle_profile_choice(
         await stats_service.record(StatsEvent.ERROR)
         await callback.message.answer(
             GENERIC_ERROR_TEXT,
-            reply_markup=main_keyboard(),
+            parse_mode=ParseMode.HTML,
         )
         return
     photo = select_profile_photo(profile_photos.photos)
     if photo is None:
         await callback.message.answer(
             NO_PROFILE_PHOTO_TEXT,
-            reply_markup=main_keyboard(),
+            parse_mode=ParseMode.HTML,
+            reply_markup=upload_photo_keyboard(),
         )
         return
 
@@ -181,7 +185,11 @@ async def handle_uploaded_document(
         or document.mime_type not in SUPPORTED_DOCUMENT_MIME_TYPES
         or message.from_user is None
     ):
-        await message.answer(INVALID_IMAGE_TEXT)
+        await message.answer(
+            INVALID_IMAGE_TEXT,
+            parse_mode=ParseMode.HTML,
+            reply_markup=alternative_photo_keyboard(),
+        )
         return
 
     await stats_service.record(StatsEvent.UPLOAD_REQUEST)
@@ -200,7 +208,10 @@ async def handle_uploaded_document(
 @router.message()
 async def handle_unsupported_message(message: Message) -> None:
     """Guide users who send text, video or other unsupported messages."""
-    await message.answer(UNSUPPORTED_MESSAGE_TEXT, reply_markup=main_keyboard())
+    await message.answer(
+        UNSUPPORTED_MESSAGE_TEXT,
+        reply_markup=photo_source_keyboard(),
+    )
 
 
 def select_profile_photo(
@@ -217,7 +228,10 @@ async def _reject_album(message: Message, album_guard: AlbumGuard) -> bool:
     if media_group_id is None:
         return False
     if await album_guard.should_notify(media_group_id):
-        await message.answer(ALBUM_REJECTED_TEXT)
+        await message.answer(
+            ALBUM_REJECTED_TEXT,
+            reply_markup=photo_source_keyboard(),
+        )
     return True
 
 
@@ -234,10 +248,14 @@ async def _process_downloadable(
 ) -> None:
     if file_size is not None and file_size > photo_service.max_input_bytes:
         await stats_service.record(StatsEvent.ERROR)
-        await message.answer(TOO_LARGE_TEXT)
+        await message.answer(
+            TOO_LARGE_TEXT,
+            parse_mode=ParseMode.HTML,
+            reply_markup=alternative_photo_keyboard(),
+        )
         return
     if not await user_guard.try_acquire(user_id):
-        await message.answer(BUSY_TEXT)
+        await message.answer(BUSY_TEXT, parse_mode=ParseMode.HTML)
         return
 
     try:
@@ -258,6 +276,7 @@ async def _process_downloadable(
         await message.answer_document(
             BufferedInputFile(result.png, filename="dzen-ludi-slova.png"),
             caption=RESULT_DOCUMENT_TEXT,
+            parse_mode=ParseMode.HTML,
             reply_markup=repeat_keyboard(),
         )
         await stats_service.record(StatsEvent.PROCESSED)
@@ -265,13 +284,21 @@ async def _process_downloadable(
             await stats_service.record(StatsEvent.CENTERED)
     except ImageTooLargeError:
         await stats_service.record(StatsEvent.ERROR)
-        await message.answer(TOO_LARGE_TEXT)
+        await message.answer(
+            TOO_LARGE_TEXT,
+            parse_mode=ParseMode.HTML,
+            reply_markup=alternative_photo_keyboard(),
+        )
     except InvalidImageError:
         await stats_service.record(StatsEvent.ERROR)
-        await message.answer(INVALID_IMAGE_TEXT)
+        await message.answer(
+            INVALID_IMAGE_TEXT,
+            parse_mode=ParseMode.HTML,
+            reply_markup=alternative_photo_keyboard(),
+        )
     except Exception:
         logger.exception("Photo processing failed")
         await stats_service.record(StatsEvent.ERROR)
-        await message.answer(GENERIC_ERROR_TEXT, reply_markup=main_keyboard())
+        await message.answer(GENERIC_ERROR_TEXT, parse_mode=ParseMode.HTML)
     finally:
         await user_guard.release(user_id)
